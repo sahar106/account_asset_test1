@@ -11,6 +11,11 @@ odoo.define("account.ReconciliationRenderer", function (require) {
     var qweb = core.qweb;
     var _t = core._t;
 
+    const {sprintf} = require("@web/core/utils/strings");
+    const {
+        ReconciliationRainbowManComponent,
+    } = require("@account_reconciliation_widget/js/reconciliation/reconciliation_rainbowman_component");
+
     /**
      * Rendering of the bank statement action contains progress bar, title and
      * auto reconciliation button
@@ -59,33 +64,38 @@ odoo.define("account.ReconciliationRenderer", function (require) {
             if (this.model.display_context !== "validate") {
                 return;
             }
-            var dt = Date.now() - this.time;
-            var $done = $(
-                qweb.render("reconciliation.done", {
-                    duration: moment(dt).utc().format(time.getLangTimeFormat()),
-                    number: state.valuenow,
-                    timePerTransaction: Math.round(dt / 1000 / state.valuemax),
-                    context: state.context,
-                })
-            );
-            $done.find("*").addClass("o_reward_subcontent");
-            $done
-                .find(".button_close_statement")
-                .click(this._onCloseBankStatement.bind(this));
-            $done
-                .find(".button_back_to_statement")
-                .click(this._onGoToBankStatement.bind(this));
-            // Display rainbowman after full reconciliation
-            if (session.show_effect) {
-                this.trigger_up("show_effect", {
-                    type: "rainbow_man",
-                    fadeout: "no",
-                    message: $done,
-                });
-                this.$el.css("min-height", "450px");
-            } else {
-                $done.appendTo(this.$el);
-            }
+
+            const dt = Date.now() - this.time;
+            const duration = moment(dt).utc().format(time.getLangTimeFormat());
+            const number = state.valuenow;
+            const timePerTransaction = Math.round(dt / 1000 / state.valuemax);
+
+            this.trigger_up("show_effect", {
+                type: "rainbow_man",
+                fadeout: "no",
+                props: {
+                    Component: ReconciliationRainbowManComponent,
+                    props: {
+                        duration: duration,
+                        number: number,
+                        timePerTransaction: timePerTransaction,
+                        context: state.context,
+                        bank_statement_id: state.bank_statement_id,
+                        onButtonBackToStatementClicked: (journalId) =>
+                            this._onGoToBankStatement(journalId),
+                        onButtonCloseStatementClicked: () =>
+                            this._onCloseBankStatement(),
+                    },
+                },
+                message: sprintf(
+                    _t(
+                        `Congrats, you're all done! You reconciled %s transactions in %s. That's on average %s seconds per transaction.`
+                    ),
+                    number,
+                    duration,
+                    timePerTransaction
+                ),
+            });
         },
         /**
          * Update the statement rendering
@@ -191,12 +201,7 @@ odoo.define("account.ReconciliationRenderer", function (require) {
          * @private
          * @param {MouseEvent} event
          */
-        _onGoToBankStatement: function (e) {
-            var journalId = $(e.target).attr("data_journal_id");
-            if (journalId) {
-                journalId = parseInt(journalId);
-            }
-            $(".o_reward").remove();
+        _onGoToBankStatement: function (journalId) {
             this.do_action({
                 name: "Bank Statements",
                 res_model: "account.bank.statement",
@@ -763,19 +768,21 @@ odoo.define("account.ReconciliationRenderer", function (require) {
                         }
                     );
 
-                    self.fields.analytic_account_id = new relational_fields.FieldMany2One(
-                        self,
-                        "analytic_account_id",
-                        record,
-                        {mode: "edit"}
-                    );
+                    self.fields.analytic_account_id =
+                        new relational_fields.FieldMany2One(
+                            self,
+                            "analytic_account_id",
+                            record,
+                            {mode: "edit"}
+                        );
 
-                    self.fields.analytic_tag_ids = new relational_fields.FieldMany2ManyTags(
-                        self,
-                        "analytic_tag_ids",
-                        record,
-                        {mode: "edit"}
-                    );
+                    self.fields.analytic_tag_ids =
+                        new relational_fields.FieldMany2ManyTags(
+                            self,
+                            "analytic_tag_ids",
+                            record,
+                            {mode: "edit"}
+                        );
 
                     self.fields.force_tax_included = new basic_fields.FieldBoolean(
                         self,
@@ -1139,12 +1146,13 @@ odoo.define("account.ReconciliationRenderer", function (require) {
                         },
                     ])
                     .then(function (recordID) {
-                        self.fields.title_account_id = new relational_fields.FieldMany2One(
-                            self,
-                            "account_id",
-                            self.model.get(recordID),
-                            {mode: "readonly"}
-                        );
+                        self.fields.title_account_id =
+                            new relational_fields.FieldMany2One(
+                                self,
+                                "account_id",
+                                self.model.get(recordID),
+                                {mode: "readonly"}
+                            );
                     })
                     .then(function () {
                         return self.fields.title_account_id.appendTo(

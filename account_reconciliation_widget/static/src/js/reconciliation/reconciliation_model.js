@@ -144,7 +144,7 @@ odoo.define("account.ReconciliationModel", function (require) {
             this._addProposition(line, prop);
             line["mv_lines_" + line.mode] = _.filter(
                 line["mv_lines_" + line.mode],
-                (l) => l.id != mv_line_id
+                (l) => l.id !== mv_line_id
             );
 
             // Remove all non valid lines
@@ -159,7 +159,7 @@ odoo.define("account.ReconciliationModel", function (require) {
             if (
                 !line.st_line.partner_id &&
                 line.reconciliation_proposition &&
-                line.reconciliation_proposition.length == 1 &&
+                line.reconciliation_proposition.length === 1 &&
                 prop.partner_id &&
                 line.type === undefined
             ) {
@@ -175,12 +175,12 @@ odoo.define("account.ReconciliationModel", function (require) {
                 this._performMoveLine(
                     handle,
                     "match_rp",
-                    line.mode == "match_rp" ? 1 : 0
+                    line.mode === "match_rp" ? 1 : 0
                 ),
                 this._performMoveLine(
                     handle,
                     "match_other",
-                    line.mode == "match_other" ? 1 : 0
+                    line.mode === "match_other" ? 1 : 0
                 ),
             ]);
         },
@@ -282,7 +282,7 @@ odoo.define("account.ReconciliationModel", function (require) {
                 .then(function () {
                     if (line.st_line.partner_id) {
                         _.each(line.reconciliation_proposition, function (prop) {
-                            if (prop.partner_id != line.st_line.partner_id) {
+                            if (prop.partner_id !== line.st_line.partner_id) {
                                 line.reconciliation_proposition = [];
                                 return false;
                             }
@@ -728,7 +728,7 @@ odoo.define("account.ReconciliationModel", function (require) {
 
                 // No proposition left and then, reset the st_line partner.
                 if (
-                    line.reconciliation_proposition.length == 0 &&
+                    line.reconciliation_proposition.length === 0 &&
                     line.st_line.has_no_partner
                 )
                     defs.push(self.changePartner(line.handle));
@@ -1009,15 +1009,16 @@ odoo.define("account.ReconciliationModel", function (require) {
                 );
 
                 _.each(self.lines, function (other_line) {
-                    if (other_line != line) {
-                        var filtered_prop = other_line.reconciliation_proposition.filter(
-                            (p) =>
-                                !line.reconciliation_proposition
-                                    .map((l) => l.id)
-                                    .includes(p.id)
-                        );
+                    if (other_line !== line) {
+                        var filtered_prop =
+                            other_line.reconciliation_proposition.filter(
+                                (p) =>
+                                    !line.reconciliation_proposition
+                                        .map((l) => l.id)
+                                        .includes(p.id)
+                            );
                         if (
-                            filtered_prop.length !=
+                            filtered_prop.length !==
                             other_line.reconciliation_proposition.length
                         ) {
                             other_line.need_update = true;
@@ -1304,7 +1305,7 @@ odoo.define("account.ReconciliationModel", function (require) {
                         : false,
                     account_code: self.accounts[line.st_line.open_balance_account_id],
                 };
-                line.balance.show_balance = line.balance.amount_currency != 0;
+                line.balance.show_balance = line.balance.amount_currency !== 0;
                 line.balance.type = line.balance.amount_currency
                     ? line.st_line.partner_id
                         ? 0
@@ -1426,7 +1427,7 @@ odoo.define("account.ReconciliationModel", function (require) {
                                 var hasDifferentPartners = function (prop) {
                                     return (
                                         !prop.partner_id ||
-                                        prop.partner_id !=
+                                        prop.partner_id !==
                                             line.reconciliation_proposition[0]
                                                 .partner_id
                                     );
@@ -1441,9 +1442,8 @@ odoo.define("account.ReconciliationModel", function (require) {
                                     return self.changePartner(
                                         line.handle,
                                         {
-                                            id:
-                                                line.reconciliation_proposition[0]
-                                                    .partner_id,
+                                            id: line.reconciliation_proposition[0]
+                                                .partner_id,
                                             display_name:
                                                 line.reconciliation_proposition[0]
                                                     .partner_name,
@@ -1517,13 +1517,13 @@ odoo.define("account.ReconciliationModel", function (require) {
             );
             if (mv_lines[0]) {
                 line["remaining_" + mode] = mv_lines[0].recs_count - mv_lines.length;
-            } else if (line["mv_lines_" + mode].lenght == 0) {
+            } else if (line["mv_lines_" + mode].lenght === 0) {
                 line["remaining_" + mode] = 0;
             }
             this._formatLineProposition(line, mv_lines);
 
             if (
-                (line.mode == "match_other" || line.mode == "match_rp") &&
+                (line.mode === "match_other" || line.mode === "match_rp") &&
                 !line["mv_lines_" + mode].length &&
                 !line["filter_" + mode].length
             ) {
@@ -1601,9 +1601,12 @@ odoo.define("account.ReconciliationModel", function (require) {
                     var matching = line.st_line.name.match(
                         new RegExp(values.amount_string)
                     );
-                    if (matching && matching.length == 2) {
+                    if (matching && matching.length === 2) {
                         matching = matching[1].replace(
-                            new RegExp("\\D" + reconcileModel.decimal_separator, "g"),
+                            new RegExp(
+                                "[^-\\d" + reconcileModel.decimal_separator + "]",
+                                "g"
+                            ),
                             ""
                         );
                         matching = matching.replace(
@@ -1635,7 +1638,7 @@ odoo.define("account.ReconciliationModel", function (require) {
                 ),
                 journal_id: this._formatNameGet(values.journal_id),
                 tax_ids: this._formatMany2ManyTagsTax(values.tax_ids || []),
-                tag_ids: values.tag_ids,
+                tax_tag_ids: this._formatMany2ManyTagsTax(values.tax_tag_ids || []),
                 tax_repartition_line_id: values.tax_repartition_line_id,
                 debit: 0,
                 credit: 0,
@@ -1790,8 +1793,8 @@ odoo.define("account.ReconciliationModel", function (require) {
             if (prop.tax_ids && prop.tax_ids.length)
                 result.tax_ids = [[6, null, _.pluck(prop.tax_ids, "id")]];
 
-            if (prop.tag_ids && prop.tag_ids.length)
-                result.tag_ids = [[6, null, prop.tag_ids]];
+            if (prop.tax_tag_ids && prop.tax_tag_ids.length)
+                result.tax_tag_ids = [[6, null, _.pluck(prop.tax_tag_ids, "id")]];
             if (prop.tax_repartition_line_id)
                 result.tax_repartition_line_id = prop.tax_repartition_line_id;
             if (prop.reconcileModelId)
@@ -2158,7 +2161,7 @@ odoo.define("account.ReconciliationModel", function (require) {
 
                 // No proposition left and then, reset the st_line partner.
                 if (
-                    line.reconciliation_proposition.length == 0 &&
+                    line.reconciliation_proposition.length === 0 &&
                     line.st_line.has_no_partner
                 )
                     defs.push(self.changePartner(line.handle));
